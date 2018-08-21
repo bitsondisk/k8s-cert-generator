@@ -1,0 +1,25 @@
+language: go
+go:
+  - 1.10.x
+
+before_script:
+
+script:
+  - make test
+
+# Build on merges to master
+branches:
+  only:
+    - master
+
+deploy:
+  provider: script
+  script: scripts/push-to-gcr.sh
+  on:
+    branch: master
+env:
+  global:
+    - CLOUDSDK_CORE_DISABLE_PROMPTS: 1
+    - CLOUDSDK_COMPUTE_ZONE: us-west1-a
+    - CLOUDSDK_CORE_PROJECT: freenome-build
+    - SERVICE_NAME: k8s-cert-generator
