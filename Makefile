@@ -5,8 +5,7 @@
 MUTABLE_VERSION ?= latest
 VERSION ?= $(shell git rev-parse --short HEAD)
 
-IMAGE_STAGING := gcr.io/go-dashboard-dev/maintnerd
-IMAGE_PROD := gcr.io/symbolic-datum-552/maintnerd
+IMAGE_NAME := gcr.io/freenome-build/k8s-cert-generator
 
 DOCKER_IMAGE_build0=build0/k8s-cert-generator:latest
 DOCKER_CTR_build0=k8s-cert-generator-build0
@@ -18,3 +17,10 @@ k8s-cert-generator: build0
 	docker create --name $(DOCKER_CTR_build0) $(DOCKER_IMAGE_build0)
 	docker cp $(DOCKER_CTR_build0):/go/bin/$@ $@
 	docker rm $(DOCKER_CTR_build0)
+
+docker-prod: k8s-cert-generator
+	docker build --force-rm --tag=$(IMAGE_NAME):$(VERSION) .
+	docker tag $(IMAGE_PROD):$(VERSION)
+
+test:
+	go test ./...
