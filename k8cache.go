@@ -41,7 +41,7 @@ type kubernetesCache struct {
 // KubernetesCache returns an autocert.Cache that will store the certificate as
 // a secret in Kubernetes. It accepts a secret name, namespace,
 // kubernetes.Clientset, and grace period (in seconds)
-func KubernetesCache(secret, namespace string, client kubernetes.Interface, deleteGracePeriod int64) autocert.Cache {
+func newKubernetesCache(secret, namespace string, client kubernetes.Interface, deleteGracePeriod int64) autocert.Cache {
 	return kubernetesCache{
 		Namespace:         namespace,
 		SecretName:        secret,

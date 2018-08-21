@@ -14,7 +14,6 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 func getBoolEnv(varname string) bool {
@@ -33,21 +32,11 @@ var port = flag.Int("port", 8443, "The port to listen on")
 
 var staging = flag.Bool("staging", getBoolEnv("STAGING"), "Use the letsencrypt staging server")
 
-var kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-
 var namespace = flag.String("namespace", "", "Namespace to use for cert storage.")
 var secretName = flag.String("secret", "acme.secret", "Secret to use for cert storage")
 
 func createInClusterClient() (*kubernetes.Clientset, error) {
 	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-	return kubernetes.NewForConfig(config)
-}
-
-func createExternalClient(kubeconfig string) (*kubernetes.Clientset, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +62,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cache := KubernetesCache(
-		*secretName,
-		getNamespace(),
-		client,
-		1,
-	)
+	cache := newKubernetesCache(*secretName, getNamespace(), client, 1)
 	var acmeClient *acme.Client
 	if *staging {
 		acmeClient = &acme.Client{DirectoryURL: "https://acme-staging.api.letsencrypt.org/directory"}
