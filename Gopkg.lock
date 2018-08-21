@@ -104,11 +104,12 @@
   version = "0.16.0"
 
 [[projects]]
-  digest = "1:4d3ec9310f186af2f94a109af52d2c3b6e71fff34f6299b529f959fa62203588"
+  digest = "1:ff04019588fc028ac28c3c565ce5316461a4641df197555041ee66cf45d213e3"
   name = "github.com/go-openapi/loads"
   packages = ["."]
   pruneopts = "UT"
-  revision = "18441dfa706d924a39a030ee2c3b1d8d81917b38"
+  revision = "2a2b323bab96e6b1fdee110e57d959322446e9c9"
+  version = "0.16.0"
 
 [[projects]]
   digest = "1:3e5bdbd2a071c72c778c28fd7b5dfde95cdfbcef412f364377e031877205e418"
@@ -202,14 +203,6 @@
   revision = "03f2033d19d5860aef995fe360ac7d395cd8ce65"
 
 [[projects]]
-  digest = "1:51594a980616375f4ca99c5fb5b781945bbc7b05d0b255b3a54abe3e3ee221b0"
-  name = "github.com/micahhausler/k8s-acme-cache"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "c6fa2b6097705aae5d7a7c2f444c5653075c4c15"
-  version = "v0.1.0"
-
-[[projects]]
   branch = "master"
   digest = "1:5ab79470a1d0fb19b041a624415612f8236b3c06070161a910562f2b2d064355"
   name = "github.com/mitchellh/mapstructure"
@@ -261,10 +254,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d1209fa9ed40a3a24de8498a9bead59eb3333f16a73fa23ba1fc6677a3cfc9d7"
+  digest = "1:c822b34344031b25ffa32de9384a5059abd019171d4a131437daf776bd0a3b32"
   name = "golang.org/x/net"
   packages = [
-    "context",
     "http/httpguts",
     "http2",
     "http2/hpack",
@@ -473,9 +465,9 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/micahhausler/k8s-acme-cache",
     "golang.org/x/crypto/acme",
     "golang.org/x/crypto/acme/autocert",
+    "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/tools/clientcmd",

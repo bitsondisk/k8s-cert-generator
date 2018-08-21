@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/micahhausler/k8s-acme-cache"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 	"k8s.io/client-go/kubernetes"
@@ -69,18 +68,12 @@ func getNamespace() string {
 
 func main() {
 	flag.Parse()
-	var client *kubernetes.Clientset
-	var err error
-	if *incluster {
-		client, err = createInClusterClient()
-	} else {
-		client, err = createExternalClient(*kubeconfig)
-	}
+	client, err := createInClusterClient()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	cache := k8s_acme_cache.KubernetesCache(
+	cache := KubernetesCache(
 		*secretName,
 		getNamespace(),
 		client,
