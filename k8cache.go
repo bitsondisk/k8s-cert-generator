@@ -26,8 +26,9 @@ import (
 	"context"
 
 	"golang.org/x/crypto/acme/autocert"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
 )
 
 type kubernetesCache struct {
@@ -39,7 +40,7 @@ type kubernetesCache struct {
 
 // KubernetesCache returns an autocert.Cache that will store the certificate as
 // a secret in Kubernetes. It accepts a secret name, namespace,
-// kubrenetes.Clientset, and grace period (in seconds)
+// kubernetes.Clientset, and grace period (in seconds)
 func KubernetesCache(secret, namespace string, client kubernetes.Interface, deleteGracePeriod int64) autocert.Cache {
 	return kubernetesCache{
 		Namespace:         namespace,
@@ -55,10 +56,10 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 	var data []byte
 
 	go func() {
-		secret, getErr := k.Client.CoreV1().Secrets(k.Namespace).Get(k.SecretName, v1.GetOptions{})
+		var secret *v1.Secret
+		secret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.SecretName, meta_v1.GetOptions{})
 		defer close(done)
-		if getErr != nil {
-			err = getErr
+		if err != nil {
 			return
 		}
 		data = secret.Data[name]
@@ -76,14 +77,13 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 }
 
 func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) error {
-	var (
-		err  error
-		done = make(chan struct{})
-	)
+	done := make(chan struct{})
+	var err error
 	go func() {
 		defer close(done)
 
-		secret, err := k.Client.CoreV1().Secrets(k.Namespace).Get(k.SecretName, v1.GetOptions{})
+		var secret *v1.Secret
+		secret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.SecretName, meta_v1.GetOptions{})
 		if err != nil {
 			return
 		}
@@ -105,14 +105,13 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 }
 
 func (k kubernetesCache) Delete(ctx context.Context, name string) error {
-	var (
-		err  error
-		done = make(chan struct{})
-	)
+	done := make(chan struct{})
+	var err error
 	go func() {
 		defer close(done)
 
-		secret, err := k.Client.CoreV1().Secrets(k.Namespace).Get(k.SecretName, v1.GetOptions{})
+		var secret *v1.Secret
+		secret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.SecretName, meta_v1.GetOptions{})
 		if err != nil {
 			return
 		}
@@ -123,7 +122,7 @@ func (k kubernetesCache) Delete(ctx context.Context, name string) error {
 		default:
 			orphanDependents := false
 			// Don't overwrite the secret if the context was canceled.
-			err = k.Client.CoreV1().Secrets(k.Namespace).Delete(k.SecretName, &v1.DeleteOptions{
+			err = k.Client.CoreV1().Secrets(k.Namespace).Delete(k.SecretName, &meta_v1.DeleteOptions{
 				GracePeriodSeconds: &k.deleteGracePeriod,
 				OrphanDependents:   &orphanDependents,
 			})

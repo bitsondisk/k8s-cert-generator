@@ -107,5 +107,5 @@ func main() {
 		},
 	}
 	log.Printf("listening on %s", server.Addr)
-	log.Fatal(server.ListenAndServeTLS("", "")) //key and cert are comming from Let's Encrypt
+	log.Fatal(server.ListenAndServeTLS("", "")) //key and cert are coming from Let's Encrypt
 }
