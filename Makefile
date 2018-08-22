@@ -20,7 +20,6 @@ k8s-cert-generator: build0
 
 docker-prod: k8s-cert-generator
 	docker build --force-rm --tag=$(IMAGE_NAME):$(TRAVIS_COMMIT) .
-	docker tag $(IMAGE_NAME):$(TRAVIS_COMMIT)
 
 test:
 	go test ./...
