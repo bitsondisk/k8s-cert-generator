@@ -3,7 +3,7 @@
 set -e
 
 # Decrypt GCR deploy key
-openssl aes-256-cbc -K $encrypted_f995266e8b6f_key -iv $encrypted_f995266e8b6f_iv -in gcr-deploy.json.enc -out gcr-deploy.json -d
+openssl aes-256-cbc -K $encrypted_343d449a08cc_key -iv $encrypted_343d449a08cc_iv -in gcr-deploy.json.enc -out gcr-deploy.json -d
 
 # Make sure we've got a gcloud client ...
 if [ ! -d "$HOME/google-cloud-sdk/bin" ]
