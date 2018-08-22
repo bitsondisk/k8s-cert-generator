@@ -2,6 +2,10 @@ language: go
 go:
   - 1.10.x
 
+services:
+  # Needed for container builds
+  - docker
+
 before_script:
 
 script:
