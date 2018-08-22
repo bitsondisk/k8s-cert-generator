@@ -114,10 +114,14 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 	// here.
 	//
 	// https://github.com/kubernetes/ingress-gce/blob/master/README.md#secret
-	pub, priv, err := getPrivPubBytes(data)
-	if err != nil {
-		log.Printf("put %s: returning err %v", name, err)
-		return err
+	var pub, priv []byte
+	var err error
+	if name != "acme_account+key" {
+		pub, priv, err = getPrivPubBytes(data)
+		if err != nil {
+			log.Printf("put %s: returning err %v", name, err)
+			return err
+		}
 	}
 	go func() {
 		defer close(done)
@@ -133,19 +137,21 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 			return
 		}
 
-		ingressSecret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.IngressSecretName, meta_v1.GetOptions{})
-		if err != nil {
-			return
+		if name != "acme_account+key" {
+			ingressSecret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.IngressSecretName, meta_v1.GetOptions{})
+			if err != nil {
+				return
+			}
+			ingressSecret.Data["tls.crt"] = pub
+			ingressSecret.Data["tls.key"] = priv
 		}
-		ingressSecret.Data["tls.crt"] = pub
-		ingressSecret.Data["tls.key"] = priv
 
 		select {
 		case <-ctx.Done():
 			// Don't overwrite the secret if the context was canceled.
 		default:
 			_, err = k.Client.CoreV1().Secrets(k.Namespace).Update(secret)
-			if err == nil {
+			if err == nil && name != "acme_account+key" {
 				_, err = k.Client.CoreV1().Secrets(k.Namespace).Update(ingressSecret)
 			}
 		}
