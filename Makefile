@@ -3,7 +3,7 @@
 # license that can be found in the LICENSE file.
 
 MUTABLE_VERSION ?= latest
-VERSION ?= $(shell git rev-parse --short HEAD)
+TRAVIS_COMMIT ?= $(shell git rev-parse --short HEAD)
 
 IMAGE_NAME := gcr.io/freenome-build/k8s-cert-generator
 
@@ -19,8 +19,8 @@ k8s-cert-generator: build0
 	docker rm $(DOCKER_CTR_build0)
 
 docker-prod: k8s-cert-generator
-	docker build --force-rm --tag=$(IMAGE_NAME):$(VERSION) .
-	docker tag $(IMAGE_PROD):$(VERSION)
+	docker build --force-rm --tag=$(IMAGE_NAME):$(TRAVIS_COMMIT) .
+	docker tag $(IMAGE_NAME):$(TRAVIS_COMMIT)
 
 test:
 	go test ./...
