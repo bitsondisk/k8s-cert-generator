@@ -135,6 +135,7 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 		select {
 		case <-ctx.Done():
 			return
+		default:
 		}
 
 		if name != "acme_account+key" {
