@@ -1,14 +1,15 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
@@ -56,6 +57,24 @@ func getNamespace() string {
 	return "default"
 }
 
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe and ListenAndServeTLS so
+// dead TCP connections (e.g. closing laptop mid-download) eventually
+// go away.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return nil, err
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
+}
+
 func main() {
 	flag.Parse()
 	client, err := createInClusterClient()
@@ -86,11 +105,15 @@ func main() {
 	portString := fmt.Sprintf(":%d", *port)
 
 	server := &http.Server{
-		Addr: portString,
-		TLSConfig: &tls.Config{
-			GetCertificate: certManager.GetCertificate,
-		},
+		Addr:      portString,
+		TLSConfig: certManager.TLSConfig(),
 	}
-	log.Printf("listening on %s", server.Addr)
-	log.Fatal(server.ListenAndServeTLS("", "")) //key and cert are coming from Let's Encrypt
+	ln, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer ln.Close()
+	log.Printf("Started TLS server on %s", server.Addr)
+	// key and cert are coming from Let's Encrypt
+	log.Fatal(server.ServeTLS(tcpKeepAliveListener{ln.(*net.TCPListener)}, "", ""))
 }
