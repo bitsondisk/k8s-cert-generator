@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"log"
 
 	"golang.org/x/crypto/acme/autocert"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,17 +71,20 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 
 	select {
 	case <-ctx.Done():
+		log.Printf("get %s: context error %v", name, ctx.Err())
 		return nil, ctx.Err()
 	case <-done:
 	}
 	if err != nil {
+		log.Printf("get %s: cache miss, returning error", name)
 		return nil, autocert.ErrCacheMiss
 	}
+	log.Printf("get %s: data %s, err %v", name, string(data), err)
 	return data, err
 }
 
 func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) error {
-	// certKey{domain: name, isToken: true}
+	log.Printf("put %s: data %s", name, string(data))
 	done := make(chan struct{})
 	// data is something like this:
 	//
@@ -107,6 +111,7 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 	// https://github.com/kubernetes/ingress-gce/blob/master/README.md#secret
 	pub, priv, err := getPrivPubBytes(data)
 	if err != nil {
+		log.Printf("put %s: returning err %v", name, err)
 		return err
 	}
 	go func() {
@@ -145,10 +150,12 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 		return ctx.Err()
 	case <-done:
 	}
+	log.Printf("put %s: return err %v", name, err)
 	return err
 }
 
 func (k kubernetesCache) Delete(ctx context.Context, name string) error {
+	log.Printf("delete %s", name)
 	done := make(chan struct{})
 	var err error
 	go func() {
@@ -177,5 +184,6 @@ func (k kubernetesCache) Delete(ctx context.Context, name string) error {
 		return ctx.Err()
 	case <-done:
 	}
+	log.Printf("delete %s: return err %v", name, err)
 	return err
 }
