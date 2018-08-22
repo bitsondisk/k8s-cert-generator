@@ -11,13 +11,14 @@ script:
 branches:
   only:
     - master
+    - configure-deployment
 
 deploy:
   provider: script
   skip_cleanup: true
   script: scripts/push-to-gcr.sh
   on:
-    branch: master
+    branch: configure-deployment
 env:
   global:
     - CLOUDSDK_CORE_DISABLE_PROMPTS: 1

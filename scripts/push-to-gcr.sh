@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 # Decrypt GCR deploy key
 openssl aes-256-cbc -K $encrypted_343d449a08cc_key -iv $encrypted_343d449a08cc_iv -in gcr-deploy.json.enc -out gcr-deploy.json -d
