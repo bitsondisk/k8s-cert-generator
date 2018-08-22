@@ -32,8 +32,10 @@ import (
 )
 
 type kubernetesCache struct {
-	Namespace         string
+	Namespace string
+	// Secret name used by Autocert for storing the raw cert data.
 	SecretName        string
+	IngressSecretName string
 	Client            kubernetes.Interface
 	deleteGracePeriod int64
 }
@@ -41,10 +43,11 @@ type kubernetesCache struct {
 // KubernetesCache returns an autocert.Cache that will store the certificate as
 // a secret in Kubernetes. It accepts a secret name, namespace,
 // kubernetes.Clientset, and grace period (in seconds)
-func newKubernetesCache(secret, namespace string, client kubernetes.Interface, deleteGracePeriod int64) autocert.Cache {
+func newKubernetesCache(secret, ingressSecret, namespace string, client kubernetes.Interface, deleteGracePeriod int64) autocert.Cache {
 	return kubernetesCache{
 		Namespace:         namespace,
 		SecretName:        secret,
+		IngressSecretName: ingressSecret,
 		Client:            client,
 		deleteGracePeriod: deleteGracePeriod,
 	}
@@ -77,23 +80,64 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 }
 
 func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) error {
+	// certKey{domain: name, isToken: true}
 	done := make(chan struct{})
-	var err error
+	// data is something like this:
+	//
+	// -----BEGIN EC PRIVATE KEY-----
+	// MHcCAQEEIItX06vEUTxdxHol3TK7UY5iZbmV5IqMl8LkqZ+MzmYcoAoGCCqGSM49
+	// AwEHoUQDQgAEMbo7AGIkWBuC2wn+i5DIwEqH0/ZDi60sJkP/WPb5wh/KjGGPVFPi
+	// nCknxPznJza/bjKWFMjIY9nYifz5vjItEA==
+	// -----END EC PRIVATE KEY-----
+	// -----BEGIN CERTIFICATE-----
+	// MIIBKTCB0KADAgECAgEBMAoGCCqGSM49BAMCMAAwHhcNMTgwODIxMjIxMDM1WhcN
+	// MTgxMTIwMDAxMDM1WjAAMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMbo7AGIk
+	// WBuC2wn+i5DIwEqH0/ZDi60sJkP/WPb5wh/KjGGPVFPinCknxPznJza/bjKWFMjI
+	// Y9nYifz5vjItEKM7MDkwDgYDVR0PAQH/BAQDAgUgMAwGA1UdEwEB/wQCMAAwGQYD
+	// VR0RAQH/BA8wDYILZXhhbXBsZS5vcmcwCgYIKoZIzj0EAwIDSAAwRQIgSLdJ5Fyv
+	// 0dNBfirvo4mW9IFSL+ivN13/owI2f4FJdrMCIQDCS3DTd6UteYivWUz6RICWLN8y
+	// kiBCmhurhHzzXp6OQQ==
+	// -----END CERTIFICATE-----
+	//
+	// Reverse engineered the format by reading the acme/autocert docs. We need
+	// to parse this out into public and private pieces so the Ingress can read
+	// it in the format expected/declared by the Ingress docs, for example
+	// here.
+	//
+	// https://github.com/kubernetes/ingress-gce/blob/master/README.md#secret
+	pub, priv, err := getPrivPubBytes(data)
+	if err != nil {
+		return err
+	}
 	go func() {
 		defer close(done)
 
-		var secret *v1.Secret
+		var secret, ingressSecret *v1.Secret
 		secret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.SecretName, meta_v1.GetOptions{})
 		if err != nil {
 			return
 		}
 		secret.Data[name] = data
+		select {
+		case <-ctx.Done():
+			return
+		}
+
+		ingressSecret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.IngressSecretName, meta_v1.GetOptions{})
+		if err != nil {
+			return
+		}
+		ingressSecret.Data["tls.crt"] = pub
+		ingressSecret.Data["tls.key"] = priv
 
 		select {
 		case <-ctx.Done():
-		default:
 			// Don't overwrite the secret if the context was canceled.
+		default:
 			_, err = k.Client.CoreV1().Secrets(k.Namespace).Update(secret)
+			if err == nil {
+				_, err = k.Client.CoreV1().Secrets(k.Namespace).Update(ingressSecret)
+			}
 		}
 	}()
 	select {

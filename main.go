@@ -34,6 +34,7 @@ var staging = flag.Bool("staging", getBoolEnv("STAGING"), "Use the letsencrypt s
 
 var namespace = flag.String("namespace", "", "Namespace to use for cert storage.")
 var secretName = flag.String("secret", "acme.secret", "Secret to use for cert storage")
+var ingressSecretName = flag.String("ingress-secret", "acme.ingress.secret", "Secret to use for storing ingress certificate")
 
 func createInClusterClient() (*kubernetes.Clientset, error) {
 	config, err := rest.InClusterConfig()
@@ -62,7 +63,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cache := newKubernetesCache(*secretName, getNamespace(), client, 1)
+	cache := newKubernetesCache(*secretName, *ingressSecretName, getNamespace(), client, 1)
 	var acmeClient *acme.Client
 	if *staging {
 		acmeClient = &acme.Client{DirectoryURL: "https://acme-staging.api.letsencrypt.org/directory"}
@@ -71,7 +72,7 @@ func main() {
 	log.Printf("Creating cert manager for domain %s", *domain)
 	certManager := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(*domain), //your domain here
+		HostPolicy: autocert.HostWhitelist(*domain),
 		Cache:      cache,
 		Email:      *email,
 		Client:     acmeClient,
