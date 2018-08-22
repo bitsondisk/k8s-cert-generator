@@ -66,7 +66,12 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 		if err != nil {
 			return
 		}
-		data = secret.Data[name]
+		var ok bool
+		data, ok = secret.Data[name]
+		if !ok {
+			err = autocert.ErrCacheMiss
+			return
+		}
 	}()
 
 	select {
@@ -75,7 +80,7 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 		return nil, ctx.Err()
 	case <-done:
 	}
-	if err != nil {
+	if err != nil || len(data) == 0 {
 		log.Printf("get %s: cache miss, returning error", name)
 		return nil, autocert.ErrCacheMiss
 	}
