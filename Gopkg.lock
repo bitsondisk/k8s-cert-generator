@@ -160,21 +160,6 @@
   revision = "44d81051d367757e1c7c6a5a86423ece9afcf63c"
 
 [[projects]]
-  branch = "master"
-  digest = "1:0778dc7fce1b4669a8bfa7ae506ec1f595b6ab0f8989c1c0d22a8ca1144e9972"
-  name = "github.com/howeyc/gopass"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "bf9dde6d0d2c004a008c27aaee91170c786f6db8"
-
-[[projects]]
-  digest = "1:06ec9147400aabb0d6960dd8557638603b5f320cd4cb8a3eceaae407e782849a"
-  name = "github.com/imdario/mergo"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "6633656539c1639d9d78127b7d47c622b5d7b6dc"
-
-[[projects]]
   digest = "1:3e551bbb3a7c0ab2a2bf4660e7fcad16db089fdcfbb44b0199e62838038623ea"
   name = "github.com/json-iterator/go"
   packages = ["."]
@@ -242,12 +227,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:42c7e30272119bd61cee83d6448f31bcb408799a5e1802edc53cec1378e19941"
+  digest = "1:dedf20eb0d3e8d6aa8a4d3d2fae248222b688ed528201995e152cc497899123c"
   name = "golang.org/x/crypto"
   packages = [
     "acme",
     "acme/autocert",
-    "ssh/terminal",
   ]
   pruneopts = "UT"
   revision = "614d502a4dac94afa3a6ce146bd1736da82514c6"
@@ -264,17 +248,6 @@
   ]
   pruneopts = "UT"
   revision = "922f4815f713f213882e8ef45e0d315b164d705c"
-
-[[projects]]
-  branch = "master"
-  digest = "1:48774faa158e9eaee1ba45aad66434bb0345927b43756a24d4fe4c44ad79e307"
-  name = "golang.org/x/sys"
-  packages = [
-    "unix",
-    "windows",
-  ]
-  pruneopts = "UT"
-  revision = "3b58ed4ad3395d483fc92d5d14123ce2c3581fec"
 
 [[projects]]
   digest = "1:0c56024909189aee3364b7f21a95a27459f718aa7c199a5c111c36cfffd9eaef"
@@ -379,7 +352,7 @@
   revision = "1fd2e63a9a370677308a42f24fd40c86438afddf"
 
 [[projects]]
-  digest = "1:888cff3ab58aecf283d8833aade9afe8c6c63e591baffacaf915803bae8fe441"
+  digest = "1:fd61d662949add34a634fe845b0169869db849928521a758e4271befe6a1d4dd"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -445,16 +418,11 @@
     "pkg/version",
     "rest",
     "rest/watch",
-    "tools/auth",
-    "tools/clientcmd",
     "tools/clientcmd/api",
-    "tools/clientcmd/api/latest",
-    "tools/clientcmd/api/v1",
     "tools/metrics",
     "transport",
     "util/cert",
     "util/flowcontrol",
-    "util/homedir",
     "util/integer",
   ]
   pruneopts = "UT"
@@ -469,8 +437,8 @@
     "golang.org/x/crypto/acme/autocert",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/client-go/kubernetes",
+    "k8s.io/client-go/pkg/api/v1",
     "k8s.io/client-go/rest",
-    "k8s.io/client-go/tools/clientcmd",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
