@@ -16,6 +16,6 @@ fi
 source ~/google-cloud-sdk/path.bash.inc
 
 # Activate travis-container-builder service account
-gcloud auth activate-service-account travis-container-builder@freenome-build.iam.gserviceaccount.com --key-file gcr-deploy.json
+gcloud auth activate-service-account travis-container-builder-2@freenome-build.iam.gserviceaccount.com --key-file gcr-deploy.json
 make docker-prod
 gcloud docker -- push gcr.io/freenome-build/${SERVICE_NAME}:${TRAVIS_COMMIT}
