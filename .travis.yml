@@ -14,6 +14,7 @@ branches:
 
 deploy:
   provider: script
+  skip_cleanup: true
   script: scripts/push-to-gcr.sh
   on:
     branch: master
