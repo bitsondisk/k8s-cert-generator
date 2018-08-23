@@ -110,7 +110,7 @@ func (k *kubernetesCache) isPrivateCert(keyName string) bool {
 
 func (k *kubernetesCache) Put(ctx context.Context, name string, data []byte) error {
 	name = strings.Replace(name, "+", "-__plus__-", -1)
-	log.Printf("put %s: data %s", name, string(data))
+	log.Printf("put %s: data length %d", name, len(data))
 	done := make(chan struct{})
 	// data is something like this:
 	//
@@ -191,11 +191,9 @@ type deletePatchOp struct {
 
 func generateDeletePatch(name string) ([]byte, error) {
 	data := []deletePatchOp{{
-		Op: "remove", Path: "/" + name,
+		Op: "remove", Path: "/data/" + name,
 	}}
-	dataBytes, err := json.Marshal(data)
-	log.Printf("dataBytes: %q", string(dataBytes))
-	return dataBytes, err
+	return json.Marshal(data)
 }
 
 func (k kubernetesCache) Delete(ctx context.Context, name string) error {
@@ -205,13 +203,6 @@ func (k kubernetesCache) Delete(ctx context.Context, name string) error {
 	var err error
 	go func() {
 		defer close(done)
-
-		var secret *v1.Secret
-		secret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.SecretName, meta_v1.GetOptions{})
-		if err != nil {
-			return
-		}
-		delete(secret.Data, name)
 
 		select {
 		case <-ctx.Done():
