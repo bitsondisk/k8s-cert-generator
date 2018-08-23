@@ -4,6 +4,10 @@
   name = "golang.org/x/crypto"
 
 [[constraint]]
+  version = "0.39"
+  name = "github.com/kevinburke/handlers"
+
+[[constraint]]
   name = "k8s.io/client-go"
   version = "4.0.0"
 

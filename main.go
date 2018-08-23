@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kevinburke/handlers"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 	"k8s.io/client-go/kubernetes"
@@ -118,9 +119,10 @@ func main() {
 		log.Printf("Got request to %s", r.URL.String())
 	})
 	tlsPortString := fmt.Sprintf(":%d", *tlsPort)
+	tlsLogger := handlers.Logger.New("protocol", "https")
 	server := &http.Server{
 		Addr:      tlsPortString,
-		Handler:   tlsMux,
+		Handler:   handlers.WithLogger(tlsMux, tlsLogger),
 		TLSConfig: certManager.TLSConfig(),
 	}
 	go func() {
@@ -145,9 +147,10 @@ func main() {
 	})
 	httpHandler := certManager.HTTPHandler(mux)
 	httpPortString := fmt.Sprintf(":%d", *httpPort)
+	httpLogger := handlers.Logger.New("protocol", "http")
 	httpServer := &http.Server{
 		Addr:    httpPortString,
-		Handler: httpHandler,
+		Handler: handlers.WithLogger(httpHandler, httpLogger),
 	}
 	go func() {
 		ln, err := net.Listen("tcp", httpServer.Addr)
