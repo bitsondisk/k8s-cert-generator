@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -8,7 +9,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/acme"
@@ -29,7 +32,8 @@ func getBoolEnv(varname string) bool {
 
 var domain = flag.String("domain", "", "The domain to use")
 var email = flag.String("email", "", "The email registering the cert")
-var port = flag.Int("port", 8443, "The port to listen on")
+var httpPort = flag.Int("http-port", 8442, "The HTTP port to listen on")
+var tlsPort = flag.Int("tls-port", 8443, "The TLS port to listen on")
 
 var staging = flag.Bool("staging", getBoolEnv("STAGING"), "Use the letsencrypt staging server")
 
@@ -75,8 +79,19 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 	return tc, nil
 }
 
+// Graceful server shutdown.
+func shutdownServer(server *http.Server) {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	server.Shutdown(shutdownCtx)
+	shutdownCancel()
+}
+
 func main() {
 	flag.Parse()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGQUIT)
+	ctx, cancel := context.WithCancel(context.Background())
+
 	client, err := createInClusterClient()
 	if err != nil {
 		log.Fatal(err)
@@ -97,23 +112,66 @@ func main() {
 		Client:     acmeClient,
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	tlsMux := http.NewServeMux()
+	tlsMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Hello world"))
 		log.Printf("Got request to %s", r.URL.String())
 	})
-
-	portString := fmt.Sprintf(":%d", *port)
-
+	tlsPortString := fmt.Sprintf(":%d", *tlsPort)
 	server := &http.Server{
-		Addr:      portString,
+		Addr:      tlsPortString,
+		Handler:   tlsMux,
 		TLSConfig: certManager.TLSConfig(),
 	}
-	ln, err := net.Listen("tcp", server.Addr)
-	if err != nil {
-		log.Fatal(err)
+	go func() {
+		ln, err := net.Listen("tcp", server.Addr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer ln.Close()
+		log.Printf("Started TLS server on %s", server.Addr)
+		// key and cert are coming from Let's Encrypt
+		serveErr := server.ServeTLS(tcpKeepAliveListener{ln.(*net.TCPListener)}, "", "")
+		if serveErr != http.ErrServerClosed {
+			log.Printf("Error starting TLS server: %v", serveErr)
+			cancel()
+		}
+	}()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello world"))
+		log.Printf("Fallback handler called over HTTP: %s %s", r.Method, r.URL.String())
+	})
+	httpHandler := certManager.HTTPHandler(mux)
+	httpPortString := fmt.Sprintf(":%d", *httpPort)
+	httpServer := &http.Server{
+		Addr:    httpPortString,
+		Handler: httpHandler,
 	}
-	defer ln.Close()
-	log.Printf("Started TLS server on %s", server.Addr)
-	// key and cert are coming from Let's Encrypt
-	log.Fatal(server.ServeTLS(tcpKeepAliveListener{ln.(*net.TCPListener)}, "", ""))
+	go func() {
+		ln, err := net.Listen("tcp", httpServer.Addr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer ln.Close()
+		log.Printf("Started HTTP server on %s", httpServer.Addr)
+		serveErr := httpServer.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
+		if serveErr != http.ErrServerClosed {
+			log.Printf("Error starting http server: %v", serveErr)
+			cancel()
+		}
+	}()
+
+	select {
+	case sig := <-c:
+		fmt.Fprintf(os.Stderr, "Caught signal %v, shutting down...\n", sig)
+	case <-ctx.Done():
+	}
+
+	cancel()
+	// We could shut down each server concurrently but it's simple enough to do
+	// consecutively and there's enough concurrency in this program.
+	shutdownServer(server)
+	shutdownServer(httpServer)
 }

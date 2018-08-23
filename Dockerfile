@@ -23,6 +23,7 @@ RUN chmod +x /tini
 
 COPY k8s-cert-generator /
 
+EXPOSE 8442
 EXPOSE 8443
 
 ENTRYPOINT ["/tini", "--", "/k8s-cert-generator", "--email", "ops@freenome.com"]
