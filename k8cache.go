@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"log"
+	"strings"
 
 	"golang.org/x/crypto/acme/autocert"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,6 +59,7 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 	done := make(chan struct{})
 	var err error
 	var data []byte
+	name = strings.Replace(name, "+", "-__plus__-", -1)
 
 	go func() {
 		var secret *v1.Secret
@@ -90,6 +92,7 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 
 func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) error {
 	log.Printf("put %s: data %s", name, string(data))
+	name = strings.Replace(name, "+", "-__plus__-", -1)
 	done := make(chan struct{})
 	// data is something like this:
 	//
@@ -168,6 +171,7 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 
 func (k kubernetesCache) Delete(ctx context.Context, name string) error {
 	log.Printf("delete %s", name)
+	name = strings.Replace(name, "+", "-__plus__-", -1)
 	done := make(chan struct{})
 	var err error
 	go func() {
