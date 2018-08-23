@@ -90,9 +90,13 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 	return data, err
 }
 
+func isPrivateCert(keyName string) bool {
+	return strings.HasSuffix(keyName, "-token")
+}
+
 func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) error {
-	log.Printf("put %s: data %s", name, string(data))
 	name = strings.Replace(name, "+", "-__plus__-", -1)
+	log.Printf("put %s: data %s", name, string(data))
 	done := make(chan struct{})
 	// data is something like this:
 	//
@@ -119,7 +123,7 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 	// https://github.com/kubernetes/ingress-gce/blob/master/README.md#secret
 	var pub, priv []byte
 	var err error
-	if name != "acme_account+key" {
+	if isPrivateCert(name) {
 		pub, priv, err = getPrivPubBytes(data)
 		if err != nil {
 			log.Printf("put %s: returning err %v", name, err)
@@ -139,23 +143,14 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 		case <-ctx.Done():
 			return
 		default:
-		}
-
-		if name != "acme_account+key" {
-			ingressSecret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.IngressSecretName, meta_v1.GetOptions{})
-			if err != nil {
-				return
-			}
-			ingressSecret.Data["tls.crt"] = pub
-			ingressSecret.Data["tls.key"] = priv
-		}
-
-		select {
-		case <-ctx.Done():
-			// Don't overwrite the secret if the context was canceled.
-		default:
 			_, err = k.Client.CoreV1().Secrets(k.Namespace).Update(secret)
-			if err == nil && name != "acme_account+key" {
+			if err == nil && isPrivateCert(name) {
+				ingressSecret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.IngressSecretName, meta_v1.GetOptions{})
+				if err != nil {
+					return
+				}
+				ingressSecret.Data["tls.crt"] = pub
+				ingressSecret.Data["tls.key"] = priv
 				_, err = k.Client.CoreV1().Secrets(k.Namespace).Update(ingressSecret)
 			}
 		}
@@ -170,8 +165,8 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 }
 
 func (k kubernetesCache) Delete(ctx context.Context, name string) error {
-	log.Printf("delete %s", name)
 	name = strings.Replace(name, "+", "-__plus__-", -1)
+	log.Printf("delete %s", name)
 	done := make(chan struct{})
 	var err error
 	go func() {
