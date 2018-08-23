@@ -138,6 +138,9 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 		if err != nil {
 			return
 		}
+		if secret.Data == nil {
+			secret.Data = make(map[string][]byte)
+		}
 		secret.Data[name] = data
 		select {
 		case <-ctx.Done():
@@ -148,6 +151,9 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 				ingressSecret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.IngressSecretName, meta_v1.GetOptions{})
 				if err != nil {
 					return
+				}
+				if ingressSecret.Data == nil {
+					ingressSecret.Data = make(map[string][]byte)
 				}
 				ingressSecret.Data["tls.crt"] = pub
 				ingressSecret.Data["tls.key"] = priv
