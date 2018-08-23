@@ -138,7 +138,7 @@ func (k *kubernetesCache) Put(ctx context.Context, name string, data []byte) err
 	var pub, priv []byte
 	var err error
 	if k.isPrivateCert(name) {
-		pub, priv, err = getPrivPubBytes(data)
+		priv, pub, err = getPrivPubBytes(data)
 		if err != nil {
 			log.Printf("put %s: returning err %v", name, err)
 			return err
