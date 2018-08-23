@@ -184,6 +184,20 @@ func (k *kubernetesCache) Put(ctx context.Context, name string, data []byte) err
 	return err
 }
 
+type deletePatchOp struct {
+	Op   string `json:"op"`
+	Path string `json:"path"`
+}
+
+func generateDeletePatch(name string) ([]byte, error) {
+	data := []deletePatchOp{{
+		Op: "remove", Path: "/" + name,
+	}}
+	dataBytes, err := json.Marshal(data)
+	log.Printf("dataBytes: %q", string(dataBytes))
+	return dataBytes, err
+}
+
 func (k kubernetesCache) Delete(ctx context.Context, name string) error {
 	name = strings.Replace(name, "+", "-__plus__-", -1)
 	log.Printf("delete %s", name)
@@ -203,14 +217,8 @@ func (k kubernetesCache) Delete(ctx context.Context, name string) error {
 		case <-ctx.Done():
 			// Don't overwrite the secret if the context was canceled.
 		default:
-			data := struct {
-				Op   string `json:"op"`
-				Path string `json:"path"`
-			}{
-				Op: "remove", Path: "/" + name,
-			}
 			var dataBytes []byte
-			dataBytes, err = json.Marshal(data)
+			dataBytes, err = generateDeletePatch(name)
 			if err != nil {
 				return
 			}
