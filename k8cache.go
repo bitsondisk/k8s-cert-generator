@@ -36,26 +36,34 @@ import (
 type kubernetesCache struct {
 	Namespace string
 	// Secret name used by Autocert for storing the raw cert data.
-	SecretName        string
+	SecretName string
+
+	// Secret name used by the Ingress to load TLS certificates from.
 	IngressSecretName string
-	Client            kubernetes.Interface
+
+	Client kubernetes.Interface
+
+	// Domain to look for. At the moment we only support one domain, since we
+	// can only write one cert to the Ingress secret.
+	domain            string
 	deleteGracePeriod int64
 }
 
 // KubernetesCache returns an autocert.Cache that will store the certificate as
 // a secret in Kubernetes. It accepts a secret name, namespace,
 // kubernetes.Clientset, and grace period (in seconds)
-func newKubernetesCache(secret, ingressSecret, namespace string, client kubernetes.Interface, deleteGracePeriod int64) autocert.Cache {
-	return kubernetesCache{
+func newKubernetesCache(secret, ingressSecret, namespace, domain string, client kubernetes.Interface, deleteGracePeriod int64) autocert.Cache {
+	return &kubernetesCache{
 		Namespace:         namespace,
 		SecretName:        secret,
 		IngressSecretName: ingressSecret,
 		Client:            client,
+		domain:            domain,
 		deleteGracePeriod: deleteGracePeriod,
 	}
 }
 
-func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
+func (k *kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 	done := make(chan struct{})
 	var err error
 	var data []byte
@@ -90,11 +98,15 @@ func (k kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) {
 	return data, err
 }
 
-func isPrivateCert(keyName string) bool {
-	return strings.HasSuffix(keyName, "-token")
+// isPrivateCert returns true if acme/autocert is attempting to store the actual
+// certificate.
+func (k *kubernetesCache) isPrivateCert(keyName string) bool {
+	// see certKey.String() in acme/autocert/autocert.go. this is not super
+	// precise.
+	return keyName == k.domain
 }
 
-func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) error {
+func (k *kubernetesCache) Put(ctx context.Context, name string, data []byte) error {
 	name = strings.Replace(name, "+", "-__plus__-", -1)
 	log.Printf("put %s: data %s", name, string(data))
 	done := make(chan struct{})
@@ -123,7 +135,7 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 	// https://github.com/kubernetes/ingress-gce/blob/master/README.md#secret
 	var pub, priv []byte
 	var err error
-	if isPrivateCert(name) {
+	if k.isPrivateCert(name) {
 		pub, priv, err = getPrivPubBytes(data)
 		if err != nil {
 			log.Printf("put %s: returning err %v", name, err)
@@ -147,7 +159,7 @@ func (k kubernetesCache) Put(ctx context.Context, name string, data []byte) erro
 			return
 		default:
 			_, err = k.Client.CoreV1().Secrets(k.Namespace).Update(secret)
-			if err == nil && isPrivateCert(name) {
+			if err == nil && k.isPrivateCert(name) {
 				ingressSecret, err = k.Client.CoreV1().Secrets(k.Namespace).Get(k.IngressSecretName, meta_v1.GetOptions{})
 				if err != nil {
 					return

@@ -98,7 +98,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cache := newKubernetesCache(*secretName, *ingressSecretName, getNamespace(), client, 1)
+	cache := newKubernetesCache(*secretName, *ingressSecretName, getNamespace(), *domain, client, 1)
 	var acmeClient *acme.Client
 	if *staging {
 		acmeClient = &acme.Client{DirectoryURL: "https://acme-staging.api.letsencrypt.org/directory"}
