@@ -58,3 +58,37 @@ ingress to terminate TLS.
 `autocert` contains logic to check when TLS certificates are about to expire and
 renew them, so it should be sufficient to just keep the project running - you
 don't have to periodically make requests to it or anything.
+
+### Bootstrapping
+
+You need to make a TLS request to trigger the Let's Encrypt logic, but if you
+don't have TLS set up you won't be able to send TLS requests to your cluster
+using an existing (good) certificate.
+
+Set up HTTP port forwarding to the HTTP port (8442) in Kubernetes, so Let's
+Encrypt can send requests over HTTP. Then enable port forwarding to the TLS
+port, locally, so you can send a TLS request without having TLS set up on the
+ingress.
+
+```
+kubectl port-forward k8s-cert-generator-55954596d7-gd8wd 8443:8443
+```
+
+Open a new Terminal shell and curl at localhost, being sure to set the domain
+properly for SNI. You MUST enable certificate checking.
+
+```
+curl -vvv -i https://YOURDOMAIN.com:8443/.well-known/any-value --resolve YOURDOMAIN.com:8443:127.0.0.1
+```
+
+That should trigger the TLS logic to provision a certificate appropriately.
+
+### Inspiration
+
+Some code was borrowed (with heavy modification) from
+github.com/micahhausler/k8s-acme-cache. That code is MIT licensed - the license
+is also present at the top of k8cache.go.
+
+The golang.org/x/crypto/acme/autocert code was written by the Go Authors. Please
+see the LICENSE files in the vendor directory to view license ownership for the
+various vendored libraries.
