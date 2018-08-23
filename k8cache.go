@@ -24,11 +24,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"strings"
 
 	"golang.org/x/crypto/acme/autocert"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 )
@@ -199,13 +201,20 @@ func (k kubernetesCache) Delete(ctx context.Context, name string) error {
 
 		select {
 		case <-ctx.Done():
-		default:
-			orphanDependents := false
 			// Don't overwrite the secret if the context was canceled.
-			err = k.Client.CoreV1().Secrets(k.Namespace).Delete(k.SecretName, &meta_v1.DeleteOptions{
-				GracePeriodSeconds: &k.deleteGracePeriod,
-				OrphanDependents:   &orphanDependents,
-			})
+		default:
+			data := struct {
+				Op   string `json:"op"`
+				Path string `json:"path"`
+			}{
+				Op: "remove", Path: "/" + name,
+			}
+			var dataBytes []byte
+			dataBytes, err = json.Marshal(data)
+			if err != nil {
+				return
+			}
+			_, err = k.Client.CoreV1().Secrets(k.Namespace).Patch(k.SecretName, types.JSONPatchType, dataBytes)
 		}
 	}()
 	select {
