@@ -96,7 +96,7 @@ func (k *kubernetesCache) Get(ctx context.Context, name string) ([]byte, error) 
 		log.Printf("get %s: cache miss, returning error", name)
 		return nil, autocert.ErrCacheMiss
 	}
-	log.Printf("get %s: data %s, err %v", name, string(data), err)
+	log.Printf("get %s: data size %d, err %v", name, len(data), err)
 	return data, err
 }
 
